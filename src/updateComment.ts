@@ -1,9 +1,47 @@
-class Some {
-  updateComment(comment) {
-    if (this.getComment(comment.id)) {
-      return this.requestToUpdateComment(comment.id, comment);
-    }
+class CommentController {
+  private comment: CommentModel;
 
-    return this.requestToCreateComment(comment);
+  constructor(comment: Comment) {
+    this.comment = comment;
+  }
+
+  public changeAction(text: string): void {
+    this.comment.text = text;
+    // тут тоже можно try catch и ловить ошибки валидации
+  }
+
+  public async saveAction(): Promise<CommentModel | void> {
+    try {
+      if (this.comment?.id) {
+        this.comment = await this.comment.update();
+      } else {
+        this.comment = await this.comment.create();
+      }
+    } catch (e) {
+      // Словили ошибку из модели this.comment.error.
+      return void this.comment;
+    } finally {
+      return this.comment
+    }
   }
 }
+
+// Какие проблемы я вижу?
+
+// 1. Название класса очень странное. Оно не дает представления о его назначении
+
+// 2. Единственный метод updateComment не соответствует своему названию. Он или создает
+// или обновляет в зависимости от обстоятельств - так что ему подойдет больше название типа
+// saveCommentAction...
+
+// 3. В этом методе мы вызываем другие методы, которые нигде не описаны. Даже если
+// предположить что они опущены "за скобки" и действительно являются методами этого
+// класса, то выходит очень странный дизайн класса - есть как минимум 4 странных метода
+// updateComment, requestToUpdateComment, requestToCreateComment, getComment. Что
+// наталкивает на мысли о каком-то божественном классе - который умеет все подряд.
+// У класса должна быть единственная ответственность. Эти доп. методы можно вынести
+// либо в другой класс и осуществить композицию(будет спец свойство в этом классе
+// с экземпляром какого-то другого класса) либо же поступить проще и вынести эти
+// методы в простые утилиты(для запросов к беку - исходя из их названия)
+// - В данном случае я предпочел набросать отношение модели и контроллера. Мы можем изменить состояние
+// модели, а затем к примеру нажав кнопку "сохранить" вызвать экшен контроллера saveAction.
